@@ -6,19 +6,23 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server.js"
   },
   "dependencies": {
-    "react-dom": "^18.2.0",
-    "react": "^18.2.0",
-    "lucide-react": "^0.561.0",
-    "jspdf": "^3.0.4",
-    "recharts": "^3.6.0",
-    "xlsx": "^0.18.5",
-    "jspdf-autotable": "^5.0.2",
     "@google/genai": "^1.33.0",
+    "@stripe/react-stripe-js": "^2.7.0",
     "@stripe/stripe-js": "^3.3.0",
-    "@stripe/react-stripe-js": "^2.7.0"
+    "express": "^5.2.1",
+    "pg": "^8.16.3",
+    "cors": "^2.8.5",
+    "jspdf": "^3.0.4",
+    "jspdf-autotable": "^5.0.2",
+    "lucide-react": "^0.561.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^3.6.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
