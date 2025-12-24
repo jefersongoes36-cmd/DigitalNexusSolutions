@@ -6,11 +6,11 @@ const { Pool } = pkg;
 const app = express();
 
 app.use(express.json());
-app.use(cors()); // permite frontend acessar a API
+app.use(cors());
 
 console.log("server.js iniciado");
 
-// --- Conexão com PostgreSQL do Render ---
+// --- Conexão com PostgreSQL ---
 const connectionString =
   process.env.DATABASE_URL ||
   "postgresql://dns_controlo_user:WhOPnhrahmlfPTJT5etv1QsJS7KkAlHR@dpg-d55s9qf5r7bs73f85110-a.oregon-postgres.render.com/dns_controlo";
@@ -34,7 +34,7 @@ const pool = new Pool({
 // --- Rota teste ---
 app.get("/", (req, res) => res.send("API funcionando"));
 
-// --- Listar usuários (admin) ---
+// --- Listar usuários ---
 app.get("/api/users", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM users ORDER BY id DESC");
@@ -88,6 +88,61 @@ app.post("/api/users", async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error("ERRO AO CRIAR USUÁRIO:", err.stack || err);
+    res.status(500).json({ error: err.stack || err });
+  }
+});
+
+// --- Atualizar usuário pelo Admin ---
+app.put("/api/users/:id", async (req, res) => {
+  const { id } = req.params;
+  const { username, password, name, role, currency, country, language, hourlyRate } = req.body;
+
+  if (!username || !name || !role) {
+    return res.status(400).json({ error: "Campos obrigatórios: username, name, role" });
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE users SET
+         username=$1,
+         password=$2,
+         name=$3,
+         role=$4,
+         currency=$5,
+         country=$6,
+         language=$7,
+         hourly_rate=$8
+       WHERE id=$9
+       RETURNING *`,
+      [username, password || '', name, role, currency || 'EUR', country || 'PT', language || 'pt', hourlyRate || 0, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+
+    console.log("Usuário atualizado pelo Admin:", result.rows[0]);
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("ERRO AO ATUALIZAR USUÁRIO:", err.stack || err);
+    res.status(500).json({ error: err.stack || err });
+  }
+});
+
+// --- Deletar usuário pelo Admin ---
+app.delete("/api/users/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query("DELETE FROM users WHERE id=$1 RETURNING *", [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Usuário não encontrado" });
+    }
+
+    console.log("Usuário deletado pelo Admin:", result.rows[0]);
+    res.json({ message: "Usuário deletado com sucesso" });
+  } catch (err) {
+    console.error("ERRO AO DELETAR USUÁRIO:", err.stack || err);
     res.status(500).json({ error: err.stack || err });
   }
 });
