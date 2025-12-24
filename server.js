@@ -45,7 +45,7 @@ app.get("/api/users", async (req, res) => {
   }
 });
 
-// --- Cadastro de usuários (site/app) ---
+// --- Cadastro de usuários pelo site/app ---
 app.post("/api/register", async (req, res) => {
   const { name, email, plan } = req.body;
 
@@ -63,6 +63,31 @@ app.post("/api/register", async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error("ERRO DETALHADO NO CADASTRO:", err.stack || err);
+    res.status(500).json({ error: err.stack || err });
+  }
+});
+
+// --- Cadastro de usuários pelo Admin ---
+app.post("/api/users", async (req, res) => {
+  const { username, password, name, role, currency, country, language, hourlyRate } = req.body;
+
+  if (!username || !password || !name || !role) {
+    return res.status(400).json({ error: "Campos obrigatórios: username, password, name, role" });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO users
+       (username, password, name, role, currency, country, language, hourly_rate)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       RETURNING *`,
+      [username, password, name, role, currency || 'EUR', country || 'PT', language || 'pt', hourlyRate || 0]
+    );
+
+    console.log("Novo usuário criado pelo Admin:", result.rows[0]);
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error("ERRO AO CRIAR USUÁRIO:", err.stack || err);
     res.status(500).json({ error: err.stack || err });
   }
 });
