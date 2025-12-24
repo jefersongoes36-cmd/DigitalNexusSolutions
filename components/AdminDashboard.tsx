@@ -1,9 +1,8 @@
-
-import React, { useState, useRef } from 'react';
-import { User, SupportedLanguage, CURRENCIES, TimeRecord } from '../types';
+import React, { useState } from 'react';
+import { User, SupportedLanguage, TimeRecord } from '../types';
 import { TRANSLATIONS, COUNTRIES } from '../constants';
 import { generateBackupFile } from '../utils/helpers';
-import { Users, UserPlus, Search, Pencil, Trash2, Clock, Database, ShieldCheck, Sparkles, MoreVertical } from 'lucide-react';
+import { Users, UserPlus, Search, Pencil, Trash2, Clock, Database, ShieldCheck } from 'lucide-react';
 
 interface Props {
   users: User[];
@@ -12,7 +11,6 @@ interface Props {
   onDeleteUser: (userId: string) => void;
   lang: SupportedLanguage;
   records: TimeRecord[];
-  onRestoreData?: (data: any) => void;
 }
 
 const AdminDashboard: React.FC<Props> = ({ users, onAddUser, onEditUser, onDeleteUser, lang, records }) => {
@@ -67,17 +65,40 @@ const AdminDashboard: React.FC<Props> = ({ users, onAddUser, onEditUser, onDelet
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const userPayload: User = {
+
+    const payload = {
       ...formData,
       hourlyRate: Number(formData.hourlyRate) || 0,
       language: lang,
-      id: formData.id || `DNS-${Date.now()}`
-    } as any;
-    if (isEditing) onEditUser(userPayload);
-    else onAddUser(userPayload);
-    setIsModalOpen(false);
+    };
+
+    try {
+      if (isEditing) {
+        // Editar usuário via backend
+        const res = await fetch(`http://localhost:3000/api/users/${formData.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const updatedUser = await res.json();
+        onEditUser(updatedUser);
+      } else {
+        // Criar usuário via backend
+        const res = await fetch('http://localhost:3000/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const newUser = await res.json();
+        onAddUser(newUser);
+      }
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Erro ao salvar usuário:', err);
+      alert('Erro ao salvar usuário. Veja o console.');
+    }
   };
 
   return (
@@ -116,40 +137,8 @@ const AdminDashboard: React.FC<Props> = ({ users, onAddUser, onEditUser, onDelet
         <button onClick={handleOpenNewUserModal} className="w-full md:w-auto flex items-center justify-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg active:scale-95 transition-transform"><UserPlus size={18} /> {t.newSubscription}</button>
       </div>
 
-      {/* User List: Mobile Cards / Desktop Table */}
+      {/* User List */}
       <div className="md:bg-white md:rounded-2xl md:shadow-sm md:border md:border-gray-100 md:overflow-hidden">
-        {/* Mobile Cards (Visible on Small Screens) */}
-        <div className="grid grid-cols-1 gap-3 md:hidden">
-            {filteredUsers.map(u => {
-                const daysLeft = calculateSubscriptionDays(u);
-                return (
-                    <div key={u.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-                        <div className="flex justify-between items-start">
-                            <div className="flex gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">{u.name.charAt(0)}</div>
-                                <div>
-                                    <h4 className="font-bold text-gray-800 leading-tight">{u.name}</h4>
-                                    <p className="text-[10px] text-gray-400 font-mono">@{u.username}</p>
-                                </div>
-                            </div>
-                            <div className="flex gap-1">
-                                <button onClick={() => handleOpenEditUserModal(u)} className="p-2 text-blue-600 bg-blue-50 rounded-lg"><Pencil size={16}/></button>
-                                <button onClick={() => onDeleteUser(u.id)} className="p-2 text-red-600 bg-red-50 rounded-lg"><Trash2 size={16}/></button>
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-between pt-2 border-t border-gray-50">
-                            <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full ${u.role === 'support' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>{u.role}</span>
-                            <div className="flex items-center gap-2">
-                                {daysLeft !== null && <span className="text-[10px] font-bold text-gray-500">{daysLeft} dias</span>}
-                                <span className={`w-2 h-2 rounded-full ${u.isActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                            </div>
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
-
-        {/* Desktop Table (Visible on Medium+ Screens) */}
         <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
                 <thead>
@@ -187,7 +176,7 @@ const AdminDashboard: React.FC<Props> = ({ users, onAddUser, onEditUser, onDelet
         </div>
       </div>
 
-      {/* Modal / Bottom Sheet */}
+      {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-end md:items-center justify-center backdrop-blur-sm p-0 md:p-4">
             <div className="bg-white rounded-t-[2.5rem] md:rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden animate-fade-in-up pb-safe max-h-[90vh] overflow-y-auto">
@@ -212,10 +201,6 @@ const AdminDashboard: React.FC<Props> = ({ users, onAddUser, onEditUser, onDelet
                             <div className="space-y-1">
                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">{t.username}</label>
                                 <input required className="w-full border-2 border-gray-100 rounded-xl p-3 bg-gray-50 focus:bg-white focus:border-blue-500 outline-none font-bold" value={formData.username} onChange={(e) => setFormData({...formData, username: e.target.value})} />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">{t.nif}</label>
-                                <input className="w-full border-2 border-gray-100 rounded-xl p-3 bg-gray-50 focus:bg-white focus:border-blue-500 outline-none font-bold" value={formData.nif} onChange={(e) => setFormData({...formData, nif: e.target.value})} />
                             </div>
                         </div>
                     </div>
